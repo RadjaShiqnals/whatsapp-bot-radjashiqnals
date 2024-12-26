@@ -11,8 +11,20 @@ This project is a WhatsApp bot built using `whatsapp-web.js`, `axios`, and other
 ## Requirements
 
 - Node.js
-- Google Chrome
-- FFMPEG
+- Google Chrome (Default Location)
+- FFMPEG (Chocolatey Version)
+
+If you don't have FFMPEG installed, you can install them using Chocolatey:
+
+1. Install Chocolatey (if not already installed):
+   ```sh
+   Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+   ```
+
+2. Install FFMPEG:
+   ```sh
+   choco install ffmpeg -y
+   ```
 
 ## Installation
 
