@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WhatsApp Bot</title>
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        font-family: Arial, sans-serif;
+        transition: background-color 0.3s, color 0.3s;
+      }
+      .hidden {
+        display: none;
+      }
+      .container {
+        text-align: center;
+      }
+      #qr-code img {
+        max-width: 100%;
+        height: auto;
+      }
+      .toggle-container {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+      }
+      .toggle {
+        cursor: pointer;
+        padding: 10px;
+        background-color: #f0f0f0;
+        color: #333;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        transition: background-color 0.3s, color 0.3s;
+      }
+      .toggle:hover {
+        background-color: #e0e0e0;
+      }
+      .dark-mode {
+        background-color: #333;
+        color: #fff;
+      }
+      .settings {
+        margin-top: 20px;
+      }
+      .settings select,
+      .settings button {
+        margin: 5px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        transition: background-color 0.3s;
+      }
+      .settings button:hover {
+        cursor: pointer;
+        background-color: #d0d0d0;
+      }
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgb(0, 0, 0);
+        background-color: rgba(0, 0, 0, 0.4);
+        justify-content: center;
+        align-items: center;
+      }
+      .modal-content {
+        background-color: #fefefe;
+        margin: auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 400px;
+        text-align: center;
+      }
+      .modal-content button {
+        margin-top: 10px;
+      }
+      .loading-overlay {
+        display: none;
+        position: fixed;
+        z-index: 2;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: center;
+        align-items: center;
+      }
+      .loading-bar {
+        width: 50%;
+        height: 4px;
+        background-color: #fff;
+        animation: loading 2s infinite;
+      }
+      @keyframes loading {
+        0% {
+          transform: translateX(-100%);
+        }
+        50% {
+          transform: translateX(0);
+        }
+        100% {
+          transform: translateX(100%);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="qr-container">
+      <div id="qr-code"></div>
+    </div>
+    <div id="login-container" class="hidden">
+      <input type="text" id="login-key" placeholder="Enter encryption key" />
+      <button id="login-button">Login</button>
+    </div>
+    <div id="main-container" class="hidden">
+      <div class="toggle-container">
+        <div class="toggle" id="mode-toggle">Toggle Dark Mode</div>
+      </div>
+      <div class="container">
+        <div id="status">Initializing...</div>
+        <div class="settings">
+          <select id="ai-model">
+            <option value="gemini">Gemini</option>
+            <option value="openai">OpenAI</option>
+            <option value="olama">Olama</option>
+          </select>
+          <button id="toggle-ask">!ask is</button>
+          <button id="toggle-sticker">!sticker is</button>
+          <button id="toggle-help">!help is</button>
+          <button id="validate-api">Validate API</button>
+          <button id="disconnect">Disconnect</button>
+          <button id="logout">Logout</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal" class="modal">
+      <div class="modal-content">
+        <p>Using the validate API will be considered a real prompt and will consume API usage. Do you want to continue?</p>
+        <button id="confirm-validate">Yes</button>
+        <button id="cancel-validate">No</button>
+      </div>
+    </div>
+
+    <div id="alert-modal" class="modal">
+      <div class="modal-content">
+        <p id="alert-message"></p>
+        <button id="close-alert">Close</button>
+      </div>
+    </div>
+
+    <div id="loading-overlay" class="loading-overlay">
+      <div class="loading-bar"></div>
+    </div>
+
+    <script>
+      const qrContainer = document.getElementById("qr-container");
+      const loginContainer = document.getElementById("login-container");
+      const mainContainer = document.getElementById("main-container");
+      const loginKeyInput = document.getElementById("login-key");
+      const loginButton = document.getElementById("login-button");
+      const statusDiv = document.getElementById("status");
+      const qrCodeDiv = document.getElementById("qr-code");
+      const modeToggle = document.getElementById("mode-toggle");
+      const body = document.body;
+      const modal = document.getElementById("modal");
+      const confirmValidateButton = document.getElementById("confirm-validate");
+      const cancelValidateButton = document.getElementById("cancel-validate");
+      const loadingOverlay = document.getElementById("loading-overlay");
+      const alertModal = document.getElementById("alert-modal");
+      const alertMessage = document.getElementById("alert-message");
+      const closeAlertButton = document.getElementById("close-alert");
+
+      const ws = new WebSocket(`ws://${window.location.host}`);
+
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type === "qr") {
+          qrCodeDiv.innerHTML = `<img src="${message.data}" alt="QR Code" />`;
+          statusDiv.textContent = "Scan the QR code with WhatsApp";
+        } else if (message.type === "ready") {
+          statusDiv.textContent = `Client is ready! Active AI model: ${message.aimodel}`;
+          qrCodeDiv.innerHTML = "";
+          qrContainer.classList.add("hidden");
+          loginContainer.classList.remove("hidden");
+        }
+      };
+
+      modeToggle.addEventListener("click", () => {
+        body.classList.toggle("dark-mode");
+      });
+
+      loginButton.addEventListener("click", () => {
+        const key = loginKeyInput.value;
+        fetch("/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key }),
+        }).then((response) => {
+          if (response.ok) {
+            loginContainer.classList.add("hidden");
+            mainContainer.classList.remove("hidden");
+          } else {
+            showAlert("Invalid key.");
+          }
+        });
+      });
+
+      const updateButtonStatus = (button, status) => {
+        button.textContent = `${button.id.replace("toggle-", "!")} is ${
+          status ? "✅" : "❌"
+        }`;
+      };
+
+      const fetchCommandStatus = (command) => {
+        return fetch("/config")
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error('Unauthorized');
+            }
+            return response.json();
+          })
+          .then((config) => config.commands[command])
+          .catch((error) => {
+            if (error.message === 'Unauthorized') {
+              loginContainer.classList.remove("hidden");
+              mainContainer.classList.add("hidden");
+            }
+          });
+      };
+
+      document
+        .getElementById("ai-model")
+        .addEventListener("change", (event) => {
+          fetch("/config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ activeAI: event.target.value }),
+          }).then(() => showAlert("AI model changed!"));
+        });
+
+      document
+        .getElementById("toggle-ask")
+        .addEventListener("click", (event) => {
+          fetch("/config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ command: "ask" }),
+          })
+            .then((response) => response.text())
+            .then((status) => {
+              showAlert(status);
+              updateButtonStatus(event.target, status.includes("on"));
+            });
+        });
+
+      document
+        .getElementById("toggle-sticker")
+        .addEventListener("click", (event) => {
+          fetch("/config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ command: "sticker" }),
+          })
+            .then((response) => response.text())
+            .then((status) => {
+              showAlert(status);
+              updateButtonStatus(event.target, status.includes("on"));
+            });
+        });
+
+      document
+        .getElementById("toggle-help")
+        .addEventListener("click", (event) => {
+          fetch("/config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ command: "help" }),
+          })
+            .then((response) => response.text())
+            .then((status) => {
+              showAlert(status);
+              updateButtonStatus(event.target, status.includes("on"));
+            });
+        });
+
+      document.getElementById("validate-api").addEventListener("click", () => {
+        modal.style.display = "flex";
+      });
+
+      confirmValidateButton.addEventListener("click", () => {
+        modal.style.display = "none";
+        loadingOverlay.style.display = "flex";
+        fetch("/validate-api", { method: "POST" })
+          .then((response) => response.json())
+          .then((data) => {
+            loadingOverlay.style.display = "none";
+            if (data.valid) {
+              showAlert("API key and URL are valid.");
+            } else {
+              showAlert("Invalid API key or URL. " + (data.error || ""));
+            }
+          });
+      });
+
+      cancelValidateButton.addEventListener("click", () => {
+        modal.style.display = "none";
+      });
+
+      document.getElementById("disconnect").addEventListener("click", () => {
+        fetch("/disconnect", { method: "POST" }).then(() =>
+          showAlert("Disconnected!")
+        );
+      });
+
+      document.getElementById("logout").addEventListener("click", () => {
+        fetch("/logout", { method: "POST" }).then(() => showAlert("Logged out!"));
+      });
+
+      closeAlertButton.addEventListener("click", () => {
+        alertModal.style.display = "none";
+      });
+
+      const showAlert = (message) => {
+        alertMessage.textContent = message;
+        alertModal.style.display = "flex";
+      };
+
+      // Fetch initial command statuses
+      fetchCommandStatus("ask").then((status) =>
+        updateButtonStatus(document.getElementById("toggle-ask"), status)
+      );
+      fetchCommandStatus("sticker").then((status) =>
+        updateButtonStatus(document.getElementById("toggle-sticker"), status)
+      );
+      fetchCommandStatus("help").then((status) =>
+        updateButtonStatus(document.getElementById("toggle-help"), status)
+      );
+    </script>
+  </body>
+</html>
