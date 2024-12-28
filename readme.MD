@@ -54,15 +54,21 @@ If you don't have FFMPEG installed, you can install them using Chocolatey:
        cp example-config.json config.json
        ```
    - Update the `config.json` file with your API keys and settings.
+   - Ensure `chromePath` and `ffmpegPath` are correctly set in the `config.json` file:
+     ```json
+     {
+       "chromePath": "C:\\Path\\To\\Chrome\\chrome.exe",
+       "ffmpegPath": "C:\\Path\\To\\FFMPEG\\ffmpeg.exe",
+       // ...other configurations...
+     }
+     ```
 
-4. **Important**: Before starting the bot, make sure to set up `executablePath` with the path to your Chrome executable and `ffmpegPath` with the path to your FFMPEG executable in the `index.js` file.
-
-5. Start the bot:
+4. Start the bot:
    ```sh
    node index.js
    ```
 
-6. Scan the QR code with your WhatsApp to authenticate.
+5. Scan the QR code with your WhatsApp to authenticate.
 
 ## Usage
 
