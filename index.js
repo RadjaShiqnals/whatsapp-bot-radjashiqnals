@@ -32,7 +32,7 @@ const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
     headless: true,
-    executablePath: "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    executablePath: "C:/Program Files/Google/Chrome/Application/chrome.exe", // Path to Chrome binary
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
@@ -43,7 +43,7 @@ const client = new Client({
       "--disable-gpu",
     ],
   },
-  ffmpegPath: "C:/ProgramData/chocolatey/bin/ffmpeg.exe",
+  ffmpegPath: "C:/ProgramData/chocolatey/bin/ffmpeg.exe", // Path to ffmpeg binary
 });
 
 /**
@@ -111,9 +111,9 @@ client.on("message", async (message) => {
               },
             });
           }
-
+          const GeminiUrl = config.gemini.url + config.gemini.apiKey;
           response = await Promise.race([
-            axios.post(config.gemini.url, payload),
+            axios.post(GeminiUrl, payload),
             timeout,
           ]);
 

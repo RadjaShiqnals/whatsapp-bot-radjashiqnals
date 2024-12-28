@@ -11,8 +11,8 @@ This project is a WhatsApp bot built using `whatsapp-web.js`, `axios`, and other
 ## Requirements
 
 - Node.js
-- Google Chrome (Default Location)
-- FFMPEG (Chocolatey Version)
+- Google Chrome
+- FFMPEG
 
 If you don't have FFMPEG installed, you can install them using Chocolatey:
 
@@ -55,12 +55,14 @@ If you don't have FFMPEG installed, you can install them using Chocolatey:
        ```
    - Update the `config.json` file with your API keys and settings.
 
-4. Start the bot:
+4. **Important**: Before starting the bot, make sure to set up `executablePath` with the path to your Chrome executable and `ffmpegPath` with the path to your FFMPEG executable in the `index.js` file.
+
+5. Start the bot:
    ```sh
    node index.js
    ```
 
-5. Scan the QR code with your WhatsApp to authenticate.
+6. Scan the QR code with your WhatsApp to authenticate.
 
 ## Usage
 
