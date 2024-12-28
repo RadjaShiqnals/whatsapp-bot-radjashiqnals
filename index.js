@@ -16,7 +16,7 @@ const path = require("path");
 const { exec } = require("child_process");
 const ffmpeg = require("fluent-ffmpeg");
 const config = require("./config.json");
-const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4 } = require("uuid");
 
 const resourcesDir = path.join(__dirname, "resources/ffmpeg-image-handler");
 if (!fs.existsSync(resourcesDir)) {
@@ -32,7 +32,7 @@ const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
     headless: true,
-    executablePath: "C:/Program Files/Google/Chrome/Application/chrome.exe", // Path to Chrome binary
+    executablePath: config.chromePath,
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
@@ -43,7 +43,7 @@ const client = new Client({
       "--disable-gpu",
     ],
   },
-  ffmpegPath: "C:/ProgramData/chocolatey/bin/ffmpeg.exe", // Path to ffmpeg binary
+  ffmpegPath: config.ffmpegPath,
 });
 
 /**
@@ -64,9 +64,11 @@ client.on("qr", (qr) => {
  */
 client.on("ready", () => {
   const enabledCommands = Object.entries(config.commands)
-    .map(([command, isEnabled]) => `${isEnabled ? '✅' : '❌'} !${command}`)
-    .join('\n');
-  console.log(`${config.readyMessage}\n\nEnabled Commands:\n${enabledCommands}`);
+    .map(([command, isEnabled]) => `${isEnabled ? "✅" : "❌"} !${command}`)
+    .join("\n");
+  console.log(
+    `${config.readyMessage}\n\nEnabled Commands:\n${enabledCommands}`
+  );
   console.log("Active AI model:", config.activeAI);
 });
 
@@ -198,10 +200,7 @@ client.on("message", async (message) => {
             resourcesDir,
             `input_${uniqueId}.${media.mimetype.split("/")[1]}`
           );
-          const outputPath = path.join(
-            resourcesDir,
-            `output_${uniqueId}.webp`
-          );
+          const outputPath = path.join(resourcesDir, `output_${uniqueId}.webp`);
           fs.writeFileSync(inputPath, mediaBuffer);
 
           await new Promise((resolve, reject) => {
@@ -245,7 +244,6 @@ client.on("message", async (message) => {
             sendMediaAsSticker: true,
           });
         }
-
       } catch (error) {
         console.error("Error downloading or processing media:", error);
         message.reply(
@@ -264,10 +262,7 @@ client.on("message", async (message) => {
      */
     const helpText = `
 Available commands:
-${config.commands.ask ? '1. !ask <query> - Ask a question or request information.\n' : ''}
-${config.commands.sticker ? '2. !sticker - Send an image or GIF with this command to convert it to a sticker.\n' : ''}
-${config.commands.help ? '3. !help - Display this help message.\n' : ''}
-    `;
+${config.commands.ask ? "!ask <query> - Ask a question or request information.\n" : ""}${config.commands.sticker ? "!sticker - Send an image or GIF with this command to convert it to a sticker.\n" : "" }${config.commands.help ? "!help - Display this help message." : ""}`;
     message.reply(helpText.trim());
   } else if (message.body.startsWith("!help")) {
     message.reply("No commands are enabled.");

@@ -1,5 +1,7 @@
 {
   "readyMessage": "    ____            __  _       _____ __    _                   __    \n   / __ \\____ _____/ / (_)___ _/ ___// /_  (_)___ _____  ____ _/ /____\n  / /_/ / __ `/ __  / / / __ `/\\__ \\/ __ \\/ / __ `/ __ \\/ __ `/ / ___/\n / _, _/ /_/ / /_/ / / / /_/ /___/ / / / / / /_/ / / / / /_/ / (__  ) \n/_/ |_|\\__,_/\\__,_/_/ /\\__,_//____/_/ /_/_/\\__, /_/ /_/\\__,_/_/____/  \n                 /___/                       /_/                     \n  GitHub: https://github.com/RadjaShiqnals\n\nCommands:\n!help - Show help message\n!sticker - Create a sticker\n!ask - Ask a question\nUse the command on the Whatsapp to use the command\n\nPerintah:\n!help - Tampilkan pesan bantuan\n!sticker - Buat stiker\n!ask - Ajukan pertanyaan\nGunakan perintah di Whatsapp untuk menggunakan perintah",
+  "chromePath" : "CHROME-PATH-HERE",
+  "ffmpegPath" : "FFMPEG-PATH-HERE",
   "gemini": {
     "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=",
     "apiKey" : "KEYHERE"
