@@ -17,7 +17,7 @@ const { exec } = require("child_process");
 const ffmpeg = require("fluent-ffmpeg");
 const config = require("./config.json");
 const { v4: uuidv4 } = require("uuid");
-
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const resourcesDir = path.join(__dirname, "resources/ffmpeg-image-handler");
 if (!fs.existsSync(resourcesDir)) {
   fs.mkdirSync(resourcesDir, { recursive: true });
@@ -176,7 +176,19 @@ client.on("message", async (message) => {
      * @function handleStickerCommand
      * @param {Message} message - The incoming message object.
      */
-    if (message.hasMedia) {
+    const args = message.body.split(" ");
+    if (args.length === 2 && args[1].startsWith("http")) {
+      const url = args[1];
+      try {
+        const response = await fetch(url);
+        const buffer = await response.buffer();
+        const media = new MessageMedia("image/gif", buffer.toString("base64"));
+        await message.reply(media, message.from, { sendMediaAsSticker: true });
+      } catch (error) {
+        console.error("Error fetching media from URL:", error);
+        message.reply("Failed to fetch media from URL.");
+      }
+    } else if (message.hasMedia) {
       try {
         const media = await message.downloadMedia();
         if (!media.mimetype) {
