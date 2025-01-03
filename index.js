@@ -176,9 +176,85 @@ client.on("message", async (message) => {
      * @function handleStickerCommand
      * @param {Message} message - The incoming message object.
      */
-    const args = message.body.split(" ");
-    if (args.length === 2 && args[1].startsWith("http")) {
-      const url = args[1];
+    const args = message.body.split(" ").slice(1); // Get all arguments after the command
+    const mediaUrls = args.filter(arg => arg.startsWith("http"));
+    const mediaCount = message.hasMedia ? 1 : 0; // Count the media in the message
+    const totalMedia = mediaUrls.length + mediaCount;
+  
+    if (totalMedia > 5) {
+      message.reply("You can only process up to 5 media items at a time.");
+      return;
+    }
+  
+    const processMedia = async (media) => {
+      if (!media.mimetype) {
+        throw new Error("Media mimetype is undefined");
+      }
+  
+      const maxSize = 3 * 1024 * 1024; // 3 MB
+      const mediaBuffer = Buffer.from(media.data, "base64");
+      if (mediaBuffer.length > maxSize) {
+        throw new Error(
+          "Media file size is too large. Please upload a file smaller than 3 MB."
+        );
+      }
+  
+      if (
+        media.mimetype.startsWith("video") ||
+        media.mimetype === "image/gif"
+      ) {
+        const uniqueId = uuidv4();
+        const inputPath = path.join(
+          resourcesDir,
+          `input_${uniqueId}.${media.mimetype.split("/")[1]}`
+        );
+        const outputPath = path.join(resourcesDir, `output_${uniqueId}.webp`);
+        fs.writeFileSync(inputPath, mediaBuffer);
+  
+        await new Promise((resolve, reject) => {
+          ffmpeg(inputPath)
+            .outputOptions([
+              "-vcodec libwebp",
+              "-vf",
+              "scale=256:256:force_original_aspect_ratio=decrease,pad=256:256:(ow-iw)/2:(oh-ih)/2",
+              "-qscale",
+              "50",
+              "-preset",
+              "default",
+              "-loop",
+              "0",
+              "-an",
+              "-vsync",
+              "0",
+            ])
+            .toFormat("webp")
+            .save(outputPath)
+            .on("end", resolve)
+            .on("error", reject);
+        });
+  
+        const webpData = fs.readFileSync(outputPath, { encoding: "base64" });
+        const webpMedia = new MessageMedia("image/webp", webpData);
+  
+        if (Buffer.byteLength(webpData, "base64") > 1 * 1024 * 1024) {
+          throw new Error(
+            "Converted WebP file size is too large. Please upload a smaller file."
+          );
+        }
+  
+        await message.reply(webpMedia, message.from, {
+          sendMediaAsSticker: true,
+        });
+        fs.unlinkSync(inputPath);
+        fs.unlinkSync(outputPath);
+      } else {
+        await message.reply(media, message.from, {
+          sendMediaAsSticker: true,
+        });
+      }
+    };
+  
+    const processUrl = async (url) => {
       try {
         const response = await fetch(url);
         const buffer = await response.buffer();
@@ -188,82 +264,26 @@ client.on("message", async (message) => {
         console.error("Error fetching media from URL:", error);
         message.reply("Failed to fetch media from URL.");
       }
-    } else if (message.hasMedia) {
-      try {
+    };
+  
+    try {
+      const mediaPromises = [];
+  
+      if (message.hasMedia) {
         const media = await message.downloadMedia();
-        if (!media.mimetype) {
-          throw new Error("Media mimetype is undefined");
-        }
-
-        const maxSize = 3 * 1024 * 1024; // 3 MB
-        const mediaBuffer = Buffer.from(media.data, "base64");
-        if (mediaBuffer.length > maxSize) {
-          throw new Error(
-            "Media file size is too large. Please upload a file smaller than 3 MB."
-          );
-        }
-
-        if (
-          media.mimetype.startsWith("video") ||
-          media.mimetype === "image/gif"
-        ) {
-          const uniqueId = uuidv4();
-          const inputPath = path.join(
-            resourcesDir,
-            `input_${uniqueId}.${media.mimetype.split("/")[1]}`
-          );
-          const outputPath = path.join(resourcesDir, `output_${uniqueId}.webp`);
-          fs.writeFileSync(inputPath, mediaBuffer);
-
-          await new Promise((resolve, reject) => {
-            ffmpeg(inputPath)
-              .outputOptions([
-                "-vcodec libwebp",
-                "-vf",
-                "scale=256:256:force_original_aspect_ratio=decrease,pad=256:256:(ow-iw)/2:(oh-ih)/2",
-                "-qscale",
-                "50",
-                "-preset",
-                "default",
-                "-loop",
-                "0",
-                "-an",
-                "-vsync",
-                "0",
-              ])
-              .toFormat("webp")
-              .save(outputPath)
-              .on("end", resolve)
-              .on("error", reject);
-          });
-
-          const webpData = fs.readFileSync(outputPath, { encoding: "base64" });
-          const webpMedia = new MessageMedia("image/webp", webpData);
-
-          if (Buffer.byteLength(webpData, "base64") > 1 * 1024 * 1024) {
-            throw new Error(
-              "Converted WebP file size is too large. Please upload a smaller file."
-            );
-          }
-
-          await message.reply(webpMedia, message.from, {
-            sendMediaAsSticker: true,
-          });
-          fs.unlinkSync(inputPath);
-          fs.unlinkSync(outputPath);
-        } else {
-          await message.reply(media, message.from, {
-            sendMediaAsSticker: true,
-          });
-        }
-      } catch (error) {
-        console.error("Error downloading or processing media:", error);
-        message.reply(
-          "Sorry, there was an error processing the media. " + error.message
-        );
+        mediaPromises.push(processMedia(media));
       }
-    } else {
-      message.reply("Please send an image or GIF with the !sticker command.");
+  
+      for (const url of mediaUrls) {
+        mediaPromises.push(processUrl(url));
+      }
+  
+      await Promise.all(mediaPromises);
+    } catch (error) {
+      console.error("Error processing media:", error);
+      message.reply(
+        "Sorry, there was an error processing the media. " + error.message
+      );
     }
   } else if (message.body.startsWith("!help") && config.commands.help) {
     /**
