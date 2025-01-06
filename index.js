@@ -19,6 +19,8 @@ const config = require("./config.json");
 const { v4: uuidv4 } = require("uuid");
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const resourcesDir = path.join(__dirname, "resources/ffmpeg-image-handler");
+const { createCanvas, loadImage } = require('canvas');
+
 if (!fs.existsSync(resourcesDir)) {
   fs.mkdirSync(resourcesDir, { recursive: true });
 }
@@ -178,8 +180,9 @@ client.on("message", async (message) => {
      */
     const args = message.body.split(" ").slice(1); // Get all arguments after the command
     const mediaUrls = args.filter(arg => arg.startsWith("http"));
+    const textMatch = message.body.match(/"([^"]+)"/);
     const mediaCount = message.hasMedia ? 1 : 0; // Count the media in the message
-    const totalMedia = mediaUrls.length + mediaCount;
+    const totalMedia = mediaUrls.length + mediaCount + (textMatch ? 1 : 0);
   
     if (totalMedia > 5) {
       message.reply("You can only process up to 5 media items at a time.");
@@ -266,6 +269,100 @@ client.on("message", async (message) => {
       }
     };
   
+    const processText = async (text) => {
+      const canvas = createCanvas(512, 512);
+      const ctx = canvas.getContext('2d');
+  
+      // Draw white background
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+      // Set text properties
+      ctx.fillStyle = 'black';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+  
+      // Function to wrap text
+      const wrapText = (context, text, x, y, maxWidth, lineHeight) => {
+        const words = text.split(' ');
+        let line = '';
+        const lines = [];
+        for (let n = 0; n < words.length; n++) {
+          const testLine = line + words[n] + ' ';
+          const metrics = context.measureText(testLine);
+          const testWidth = metrics.width;
+          if (testWidth > maxWidth && n > 0) {
+            lines.push(line);
+            line = words[n] + ' ';
+          } else {
+            line = testLine;
+          }
+        }
+        lines.push(line);
+        const totalHeight = lines.length * lineHeight;
+        const startY = y - (totalHeight / 2);
+        for (let k = 0; k < lines.length; k++) {
+          context.fillText(lines[k], x, startY + (k * lineHeight));
+        }
+      };
+  
+      // Adjust font size based on text length
+      let fontSize = 40;
+      const maxWidth = 480;
+      const maxHeight = 480;
+      let lineHeight = fontSize * 1.2;
+      ctx.font = `bold ${fontSize}px Arial`;
+  
+      // Calculate the total height of the text
+      const words = text.split(' ');
+      let line = '';
+      const lines = [];
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = ctx.measureText(testLine);
+        const testWidth = metrics.width;
+        if (testWidth > maxWidth && n > 0) {
+          lines.push(line);
+          line = words[n] + ' ';
+        } else {
+          line = testLine;
+        }
+      }
+      lines.push(line);
+      let totalHeight = lines.length * lineHeight;
+  
+      // Adjust font size to fit within the canvas
+      while (totalHeight > maxHeight && fontSize > 10) {
+        fontSize -= 2;
+        lineHeight = fontSize * 1.2;
+        ctx.font = `bold ${fontSize}px Arial`;
+  
+        // Recalculate the total height of the text
+        line = '';
+        lines.length = 0;
+        for (let n = 0; n < words.length; n++) {
+          const testLine = line + words[n] + ' ';
+          const metrics = ctx.measureText(testLine);
+          const testWidth = metrics.width;
+          if (testWidth > maxWidth && n > 0) {
+            lines.push(line);
+            line = words[n] + ' ';
+          } else {
+            line = testLine;
+          }
+        }
+        lines.push(line);
+        totalHeight = lines.length * lineHeight;
+      }
+  
+      // Wrap and draw text
+      wrapText(ctx, text, canvas.width / 2, canvas.height / 2, maxWidth, lineHeight);
+  
+      const buffer = canvas.toBuffer('image/png');
+      const media = new MessageMedia('image/png', buffer.toString('base64'));
+      await message.reply(media, message.from, { sendMediaAsSticker: true });
+    };
+  
     try {
       const mediaPromises = [];
   
@@ -276,6 +373,15 @@ client.on("message", async (message) => {
   
       for (const url of mediaUrls) {
         mediaPromises.push(processUrl(url));
+      }
+  
+      if (textMatch) {
+        mediaPromises.push(processText(textMatch[1]));
+      }
+  
+      if (mediaPromises.length === 0) {
+        message.reply("Please provide a valid URL, media, or text within double quotes.");
+        return;
       }
   
       await Promise.all(mediaPromises);
@@ -294,8 +400,8 @@ client.on("message", async (message) => {
      */
     const helpText = `
 Available commands:
-${config.commands.ask ? "!ask <query> - Ask a question or request information.\n" : ""}${config.commands.sticker ? "!sticker - Send an image or GIF with this command to convert it to a sticker.\n" : "" }${config.commands.help ? "!help - Display this help message." : ""}`;
-    message.reply(helpText.trim());
+${config.commands.ask ? "!ask <query> - Ask a question or request information.\n" : ""}${config.commands.sticker ? "!sticker - Send an image or GIF with this command to convert it to a sticker, provide a URL to convert it to a sticker, or use \"TEXT\" to create a text sticker.\n" : ""}${config.commands.help ? "!help - Display this help message." : ""}`;
+  message.reply(helpText.trim());
   } else if (message.body.startsWith("!help")) {
     message.reply("No commands are enabled.");
   }
