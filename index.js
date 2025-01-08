@@ -20,6 +20,8 @@ const { v4: uuidv4 } = require("uuid");
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const resourcesDir = path.join(__dirname, "resources/ffmpeg-image-handler");
 const { createCanvas, loadImage } = require('canvas');
+const puppeteer = require('puppeteer');
+const ffmpegPath = require('ffmpeg-static');
 
 if (!fs.existsSync(resourcesDir)) {
   fs.mkdirSync(resourcesDir, { recursive: true });
@@ -34,7 +36,7 @@ const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
     headless: true,
-    executablePath: config.chromePath,
+    executablePath: puppeteer.executablePath(),
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
@@ -45,7 +47,7 @@ const client = new Client({
       "--disable-gpu",
     ],
   },
-  ffmpegPath: config.ffmpegPath,
+  ffmpegPath: ffmpegPath,
 });
 
 /**

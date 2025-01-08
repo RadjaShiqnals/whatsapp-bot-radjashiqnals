@@ -11,20 +11,6 @@ This project is a WhatsApp bot built using `whatsapp-web.js`, `axios`, and other
 ## Requirements
 
 - Node.js
-- Google Chrome
-- FFMPEG
-
-If you don't have FFMPEG installed, you can install them using Chocolatey:
-
-1. Install Chocolatey (if not already installed):
-   ```sh
-   Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-   ```
-
-2. Install FFMPEG:
-   ```sh
-   choco install ffmpeg -y
-   ```
 
 ## Installation
 
@@ -53,13 +39,29 @@ If you don't have FFMPEG installed, you can install them using Chocolatey:
        ```sh
        cp example-config.json config.json
        ```
-   - Update the `config.json` file with your API keys and settings.
-   - Ensure `chromePath` and `ffmpegPath` are correctly set in the `config.json` file:
+   - Update the `config.json` file with your API keys and settings. For example:
      ```json
      {
-       "chromePath": "C:\\Path\\To\\Chrome\\chrome.exe",
-       "ffmpegPath": "C:\\Path\\To\\FFMPEG\\ffmpeg.exe",
-       // ...other configurations...
+       "readyMessage": "Your custom ready message",
+       "gemini": {
+         "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=",
+         "apiKey": "YOUR_GEMINI_API_KEY"
+       },
+       "openai": {
+         "url": "https://api.openai.com/v1/chat/completions",
+         "apiKey": "YOUR_OPENAI_API_KEY",
+         "model": "gpt-4o-mini"
+       },
+       "olama": {
+         "url": "http://localhost:11434/api/generate",
+         "model": "llama3.2"
+       },
+       "activeAI": "gemini",
+       "commands": {
+         "ask": true,
+         "sticker": true,
+         "help": true
+       }
      }
      ```
 
@@ -75,6 +77,10 @@ If you don't have FFMPEG installed, you can install them using Chocolatey:
 - **!ask <query>**: Ask a question or request information from the AI models.
 - **!sticker**: Send an image or GIF with this command to convert it to a sticker.
 - **!help**: Display the help message with available commands.
+
+## API Documentation
+
+For detailed information on how the AI models are configured and used, refer to the [API Documentation](api.md).
 
 ## License
 
