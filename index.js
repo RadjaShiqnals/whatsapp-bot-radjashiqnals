@@ -263,8 +263,39 @@ client.on("message", async (message) => {
       try {
         const response = await fetch(url);
         const buffer = await response.buffer();
-        const media = new MessageMedia("image/gif", buffer.toString("base64"));
-        await message.reply(media, message.from, { sendMediaAsSticker: true });
+        const uniqueId = uuidv4();
+        const inputPath = path.join(resourcesDir, `input_${uniqueId}.gif`);
+        const outputPath = path.join(resourcesDir, `output_${uniqueId}.webp`);
+        
+        // Save the downloaded buffer to a file
+        fs.writeFileSync(inputPath, buffer);
+
+        // Convert to animated WebP using ffmpeg
+        await new Promise((resolve, reject) => {
+          ffmpeg(inputPath)
+            .outputOptions([
+              "-vcodec", "libwebp",
+              "-vf", "scale=256:256:force_original_aspect_ratio=decrease,pad=256:256:(ow-iw)/2:(oh-ih)/2",
+              "-qscale", "50",
+              "-preset", "default",
+              "-loop", "0",
+              "-an",
+              "-vsync", "0"
+            ])
+            .toFormat("webp")
+            .save(outputPath)
+            .on("end", resolve)
+            .on("error", reject);
+        });
+
+        const webpData = fs.readFileSync(outputPath, { encoding: "base64" });
+        const webpMedia = new MessageMedia("image/webp", webpData);
+
+        await message.reply(webpMedia, message.from, { sendMediaAsSticker: true });
+
+        // Cleanup temporary files
+        fs.unlinkSync(inputPath);
+        fs.unlinkSync(outputPath);
       } catch (error) {
         console.error("Error fetching media from URL:", error);
         message.reply("Failed to fetch media from URL.");
