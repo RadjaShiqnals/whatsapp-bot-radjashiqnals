@@ -22,6 +22,8 @@ const resourcesDir = path.join(__dirname, "resources/ffmpeg-image-handler");
 const { createCanvas, loadImage } = require('canvas');
 const puppeteer = require('puppeteer');
 const ffmpegPath = require('ffmpeg-static');
+const ConfigManager = require('./managers/configManager');
+const keypress = require('keypress');
 
 if (!fs.existsSync(resourcesDir)) {
   fs.mkdirSync(resourcesDir, { recursive: true });
@@ -36,18 +38,28 @@ const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
     headless: true,
-    executablePath: puppeteer.executablePath(),
     args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-accelerated-2d-canvas",
-      "--no-first-run",
-      "--no-zygote",
-      "--disable-gpu",
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--disable-extensions',
+      '--disable-sync',
+      '--disable-background-timer-throttling',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-renderer-backgrounding',
+      '--disable-backed-shared-workers',
+      '--disable-ipc-flooding-protection'
     ],
+    defaultViewport: null,
+    timeout: 120000
   },
   ffmpegPath: ffmpegPath,
+  restartOnAuthFail: true,
+  takeoverOnConflict: true,
+  takeoverTimeoutMs: 120000
 });
 
 /**
@@ -74,6 +86,9 @@ client.on("ready", () => {
     `${config.readyMessage}\n\nEnabled Commands:\n${enabledCommands}`
   );
   console.log("Active AI model:", config.activeAI);
+  console.log("\nTerminal Controls:");
+  console.log("Ctrl+X - Enter configuration mode");
+  console.log("Ctrl+C - Exit configuration mode/Stop bot");
 });
 
 /**
@@ -424,6 +439,136 @@ client.on("message", async (message) => {
         "Sorry, there was an error processing the media. " + error.message
       );
     }
+  } else if (message.body.startsWith("!text") && config.commands.text) {
+    const text = message.body.replace("!text", "").trim();
+    
+    if (!message.hasMedia) {
+      message.reply("Please send an image with the !text command");
+      return;
+    }
+
+    try {
+      const media = await message.downloadMedia();
+      if (!media.mimetype.startsWith("image/")) {
+        message.reply("This command only works with images");
+        return;
+      }
+
+      const image = await loadImage(Buffer.from(media.data, "base64"));
+      const canvas = createCanvas(image.width, image.height);
+      const ctx = canvas.getContext("2d");
+
+      // Draw the original image
+      ctx.drawImage(image, 0, 0);
+
+      // Configure text style - start with a reasonable font size
+      const initialFontSize = Math.floor(image.height / 10); // Scale font with image
+      let fontSize = initialFontSize;
+      ctx.textAlign = "center";
+
+      // Wrap text function
+      const wrapText = (context, text, x, y, maxWidth, lineHeight) => {
+        const words = text.split(' ');
+        let line = '';
+        const lines = [];
+        
+        for (let n = 0; n < words.length; n++) {
+          const testLine = line + words[n] + ' ';
+          const metrics = context.measureText(testLine);
+          const testWidth = metrics.width;
+          
+          if (testWidth > maxWidth && n > 0) {
+            lines.push(line);
+            line = words[n] + ' ';
+          } else {
+            line = testLine;
+          }
+        }
+        lines.push(line);
+        
+        // Calculate total height of text to position from bottom
+        const totalHeight = lines.length * lineHeight;
+        let startY = y - totalHeight + lineHeight; // Start from the bottom, accounting for the height
+        
+        for (let k = 0; k < lines.length; k++) {
+          context.strokeText(lines[k].trim(), x, startY);
+          context.fillText(lines[k].trim(), x, startY);
+          startY += lineHeight;
+        }
+        
+        return lines.length;
+      };
+
+      // Calculate maximum width and height for text area
+      const maxWidth = image.width * 0.9; // 90% of image width
+      const maxHeight = image.height * 0.25; // 25% of image height for text area
+      
+      // Start with initial font size and reduce until text fits
+      let lineHeight = fontSize * 1.2;
+      let lineCount;
+      
+      // Test text with current font size
+      do {
+        ctx.font = `bold ${fontSize}px Impact`;
+        ctx.lineWidth = fontSize / 15;
+        lineHeight = fontSize * 1.2;
+        
+        // Test if text will fit with current font size
+        const testLines = [];
+        let testLine = '';
+        const words = text.split(' ');
+        
+        for (let n = 0; n < words.length; n++) {
+          const word = words[n] + ' ';
+          const testWidth = ctx.measureText(testLine + word).width;
+          
+          if (testWidth > maxWidth) {
+            testLines.push(testLine);
+            testLine = word;
+          } else {
+            testLine += word;
+          }
+        }
+        testLines.push(testLine);
+        
+        lineCount = testLines.length;
+        const estimatedHeight = lineCount * lineHeight;
+        
+        // If text is too high, reduce font size
+        if (estimatedHeight > maxHeight && fontSize > 12) {
+          fontSize -= 2;
+        } else {
+          break;
+        }
+      } while (fontSize > 12);
+
+      // Set final text style
+      ctx.font = `bold ${fontSize}px Impact`;
+      ctx.fillStyle = "white";
+      ctx.strokeStyle = "black";
+      ctx.lineWidth = fontSize / 15;
+      
+      // Draw text at the bottom with padding
+      const bottomPadding = fontSize;
+      wrapText(
+        ctx, 
+        text, 
+        canvas.width / 2, 
+        canvas.height - bottomPadding, 
+        maxWidth, 
+        lineHeight
+      );
+
+      // Convert to sticker
+      const buffer = canvas.toBuffer("image/png");
+      const stickerMedia = new MessageMedia("image/png", buffer.toString("base64"));
+      await message.reply(stickerMedia, message.from, { sendMediaAsSticker: true });
+
+    } catch (error) {
+      console.error("Error processing meme:", error);
+      message.reply("Sorry, there was an error creating your meme sticker.");
+    }
+
   } else if (message.body.startsWith("!help") && config.commands.help) {
     /**
      * Handles the !help command to display available commands.
@@ -433,7 +578,7 @@ client.on("message", async (message) => {
      */
     const helpText = `
 Available commands:
-${config.commands.ask ? "!ask <query> - Ask a question or request information.\n" : ""}${config.commands.sticker ? "!sticker - Send an image or GIF with this command to convert it to a sticker, provide a URL to convert it to a sticker, or use \"TEXT\" to create a text sticker.\n" : ""}${config.commands.help ? "!help - Display this help message." : ""}`;
+${config.commands.ask ? "!ask <query> - Ask a question or request information.\n" : ""}${config.commands.sticker ? "!sticker - Send an image or GIF with this command to convert it to a sticker, provide a URL to convert it to a sticker, or use \"TEXT\" to create a text sticker.\n" : ""}${config.commands.text ? "!text <text> - Create a meme sticker with the given text at the bottom.\n" : ""}${config.commands.help ? "!help - Display this help message." : ""}`;
   message.reply(helpText.trim());
   } else if (message.body.startsWith("!help")) {
     message.reply("No commands are enabled.");
@@ -445,4 +590,80 @@ ${config.commands.ask ? "!ask <query> - Ask a question or request information.\n
  *
  * @function client.initialize
  */
-client.initialize();
+client.on('disconnected', async (reason) => {
+  console.log('Client disconnected:', reason);
+  try {
+    await client.destroy();
+    client.initialize();
+  } catch (error) {
+    console.error('Failed to reinitialize client:', error);
+    process.exit(1);
+  }
+});
+
+const initClient = async (retries = 3) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await client.initialize();
+      break;
+    } catch (error) {
+      console.error(`Failed to initialize (attempt ${i + 1}/${retries}):`, error);
+      if (i === retries - 1) {
+        console.error('Max retries reached. Exiting...');
+        process.exit(1);
+      }
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+  }
+};
+
+initClient();
+
+// Add after client initialization
+let configMode = false;
+let configManager = null;
+
+// Make stdin emit keypress events
+keypress(process.stdin);
+
+// Enable raw mode
+if (process.stdin.isTTY) {
+  process.stdin.setRawMode(true);
+}
+process.stdin.resume();
+
+process.stdin.on('keypress', function (ch, key) {
+  // Handle Ctrl+C globally
+  if (key && key.ctrl && key.name === 'c') {
+    if (configMode) {
+      console.log('\nExiting configuration mode...');
+      configMode = false;
+      configManager = null;
+    } else {
+      console.log('\nExiting application...');
+      process.exit();
+    }
+    return;
+  }
+
+  // Handle Ctrl+X to enter config mode
+  if (!configMode && key && key.ctrl && key.name === 'x') {
+    console.log('\nEntering configuration mode...');
+    configMode = true;
+    configManager = new ConfigManager();
+    return;
+  }
+
+  // Pass other keypresses to the config manager when in config mode
+  if (configMode && configManager) {
+    // Log keypress for debugging
+    console.log(`Key pressed: "${ch}", ctrl: ${key ? key.ctrl : 'unknown'}, name: ${key ? key.name : 'unknown'}`);
+    
+    const result = configManager.handleKeypress(ch, key);
+    if (result === false) {
+      console.log('\nConfiguration mode closed. Bot is running normally.');
+      configMode = false;
+      configManager = null;
+    }
+  }
+});

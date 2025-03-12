@@ -78,6 +78,29 @@ This project is a WhatsApp bot built using `whatsapp-web.js`, `axios`, and other
 - **!sticker**: Send an image or GIF with this command to convert it to a sticker.
 - **!help**: Display the help message with available commands.
 
+## Terminal Controls
+
+The bot can be configured through the terminal using the following controls:
+
+- Press `Ctrl+X` to enter configuration mode
+- In configuration mode:
+  1. Change Active AI Model - Switch between Gemini, OpenAI, and Olama
+  2. Modify API Keys - Update API keys for different services
+  3. Toggle Commands - Enable/disable specific commands
+  4. Show Current Configuration - View current settings
+  5. Exit Configuration Mode
+- Press `Ctrl+C` to exit configuration mode or stop the bot
+
+### Configuration Tutorial
+
+1. Start the bot using `node index.js`
+2. Press `Ctrl+X` to enter configuration mode
+3. Select options by entering the corresponding number
+4. Follow the prompts to modify settings
+5. Changes are saved automatically
+6. Press `Ctrl+C` to exit configuration mode
+7. The bot will continue running with the new settings
+
 ## API Documentation
 
 For detailed information on how the AI models are configured and used, refer to the [API Documentation](api.md).
