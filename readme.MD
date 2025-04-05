@@ -4,7 +4,7 @@ This project is a WhatsApp bot built using `whatsapp-web.js`, `axios`, and other
 
 ## Features
 
-- **Ask AI**: Query AI models like OpenAI, Gemini, and Olama.
+- **Ask AI**: Query AI models like OpenAI, Gemini, Olama, and OpenRouter.
 - **Sticker Conversion**: Convert images or GIFs to stickers.
 - **Help Command**: Display available commands.
 
@@ -56,6 +56,11 @@ This project is a WhatsApp bot built using `whatsapp-web.js`, `axios`, and other
          "url": "http://localhost:11434/api/generate",
          "model": "llama3.2"
        },
+       "openrouter": {
+         "url": "https://openrouter.ai/api/v1/chat/completions",
+         "apiKey": "YOUR_OPENROUTER_API_KEY",
+         "model": "undi95/toppy-m-7b:free"
+       },
        "activeAI": "gemini",
        "commands": {
          "ask": true,
@@ -84,7 +89,7 @@ The bot can be configured through the terminal using the following controls:
 
 - Press `Ctrl+X` to enter configuration mode
 - In configuration mode:
-  1. Change Active AI Model - Switch between Gemini, OpenAI, and Olama
+  1. Change Active AI Model - Switch between Gemini, OpenAI, Olama, and OpenRouter
   2. Modify API Keys - Update API keys for different services
   3. Toggle Commands - Enable/disable specific commands
   4. Show Current Configuration - View current settings

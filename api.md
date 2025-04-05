@@ -1,6 +1,6 @@
 # API Documentation
 
-This document provides information on how the OpenAI, Gemini, and Olama APIs are used in the RadjaShiqnals-WhatsappBot project.
+This document provides information on how the OpenAI, Gemini, Olama, and OpenRouter APIs are used in the RadjaShiqnals-WhatsappBot project.
 
 ## OpenAI
 
@@ -73,3 +73,27 @@ The Olama API is used to query the Olama models for generating responses to user
 ### Usage
 
 The bot sends a POST request to the Olama API with the user's query and receives a response from the AI model.
+
+## OpenRouter
+
+The OpenRouter API is used to query various AI models hosted on the OpenRouter platform for generating responses to user queries.
+
+### Configuration
+
+- **URL**: `https://openrouter.ai/api/v1/chat/completions`
+- **API Key**: You need to provide your OpenRouter API key in the `config.json` file.
+- **Model**: Specify the model to use (e.g., `undi95/toppy-m-7b:free`).
+
+### Example Payload
+
+```json
+{
+  "model": "undi95/toppy-m-7b:free",
+  "messages": [{ "role": "user", "content": "<your-query>" }],
+  "stream": false
+}
+```
+
+### Usage
+
+The bot sends a POST request to the OpenRouter API with the user's query and receives a response from the AI model.

@@ -13,6 +13,11 @@
     "url": "http://localhost:11434/api/generate",
     "model": "llama3.2"
   },
+  "openrouter": {
+    "url": "https://openrouter.ai/api/v1/chat/completions",
+    "apiKey": "OPENROUTER-KEY",
+    "model": "undi95/toppy-m-7b:free"
+  },
   "activeAI": "gemini",
   "commands": {
     "ask": true,

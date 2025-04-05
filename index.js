@@ -176,6 +176,26 @@ client.on("message", async (message) => {
 
           const assistantResponse = response.data.response.trim();
           await loadingMessage.edit(assistantResponse);
+        } else if (config.activeAI === "openrouter") {
+          const payload = {
+            model: config.openrouter.model,
+            messages: [{ role: "user", content: query }],
+            stream: false,
+          };
+
+          response = await Promise.race([
+            axios.post(config.openrouter.url, payload, {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${config.openrouter.apiKey}`,
+              },
+            }),
+            timeout,
+          ]);
+
+          const assistantResponse =
+            response.data.choices[0].message.content.trim();
+          await loadingMessage.edit(assistantResponse);
         }
       } catch (error) {
         console.error(
